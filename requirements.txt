@@ -1,0 +1,12 @@
+pyautogui>=0.9.54
+pywinauto>=0.6.8
+pywin32
+Pillow>=10.1.0
+pynput>=1.7.6
+python-dotenv>=1.0.0
+schedule>=1.2.0
+pyyaml>=6.0.1
+# opencv-python e numpy são opcionais para Python 3.14
+# Se precisar de reconhecimento de imagens, instale manualmente após instalar Visual Studio Build Tools
+# ou use Python 3.11/3.12 que têm wheels pré-compilados disponíveis
+

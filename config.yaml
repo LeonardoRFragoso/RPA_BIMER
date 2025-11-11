@@ -1,0 +1,66 @@
+# Configurações do RPA Bimmer
+vm:
+  host: "144.22.232.212"  # IP ou hostname da VM
+  username: "parceiro"  # Usuário para acesso
+  password: ")swz3j5Bo3^9"  # Senha (usar variável de ambiente em produção)
+  port: 50491  # Porta RDP (não padrão)
+
+bimmer:
+  # Caminho do executável do Bimmer
+  executable_path: "C:\\Program Files\\Alterdata\\ERP\\Bimer.exe"
+  # Tempo de espera entre ações (segundos)
+  action_delay: 1.0
+  # Tempo de espera para carregamento de telas (segundos)
+  screen_load_timeout: 10.0
+  # Modo temporário: pular processamento de remessas (não carregar CSV agora)
+  skip_remessas: true
+  
+  # Coordenadas do ícone do Bimmer na área de trabalho
+  # Use o script mapear_icone_bimmer.py para capturar essas coordenadas
+  icon_x: 2938  # Coordenada X do ícone do Bimmer
+  icon_y: 861   # Coordenada Y do ícone do Bimmer
+  
+  # Coordenadas ou identificadores de elementos da tela
+  # (serão configuradas após análise do software)
+  ui_elements:
+    menu_remessas: ""
+    botao_gerar: ""
+    campo_valor: ""
+    campo_beneficiario: ""
+
+    # Login Bimer (1ª tentativa)
+    password_bimer_x: 905
+    password_bimer_y: 520
+    entrar_bimer_x: 935
+    entrar_bimer_y: 644
+
+    # Modal de erro de login (OK)
+    erro_login_ok_x: 957
+    erro_login_ok_y: 554
+
+    # Login Bimer (2ª tentativa, coordenadas explícitas)
+    retry_password_x: 905
+    retry_password_y: 520
+    retry_entrar_x: 935
+    retry_entrar_y: 644
+
+remessas:
+  # Configurações de remessas bancárias
+  banco_padrao: ""
+  agencia_padrao: ""
+  conta_padrao: ""
+  # Arquivo CSV ou Excel com dados das remessas
+  arquivo_dados: "remessas.csv"
+
+servico:
+  nome: "RPA-Bimmer-Service"
+  descricao: "Serviço para automação de remessas bancárias no Bimmer"
+  display_name: "RPA Bimmer Service"
+  # Executar automaticamente ao iniciar o Windows
+  auto_start: true
+
+logging:
+  nivel: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  arquivo_log: "logs\\rpa_bimmer.log"
+  manter_logs_dias: 30
+
