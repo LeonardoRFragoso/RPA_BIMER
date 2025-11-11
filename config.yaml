@@ -26,64 +26,83 @@ bimmer:
   icon_x: 2938  # Coordenada X do ícone do Bimmer
   icon_y: 861   # Coordenada Y do ícone do Bimmer
   
-  # Coordenadas ou identificadores de elementos da tela
-  # Coordenadas ABSOLUTAS capturadas (não usar negativas)
+  # ============================================================
+  # COORDENADAS DOS ELEMENTOS DA UI (ABSOLUTAS)
+  # ============================================================
   ui_elements:
-    "campo usuario do login bimer": ""
-    "campo tipo de conta no login": "866,579"  # Dropdown de ambiente
-    menu_remessas: ""
-    botao_gerar: ""
-    campo_valor: ""
-    campo_beneficiario: ""
-
-    # Login Bimer - COORDENADAS ABSOLUTAS CORRETAS
-    password_bimer_x: 904
-    password_bimer_y: 520
-    entrar_bimer_x: 1058
-    entrar_bimer_y: 638
+    # ========================================
+    # COORDENADAS DE LOGIN
+    # ========================================
+    dropdown_ambiente_x: 866
+    dropdown_ambiente_y: 579
+    ambiente_teste_x: 974
+    ambiente_teste_y: 677
+    campo_senha_x: 904
+    campo_senha_y: 520
+    botao_entrar_x: 953
+    botao_entrar_y: 645
+    fechar_modal_x: 1391
+    fechar_modal_y: 192
     
-    # Dropdown de ambiente
-    campo_dropdown_ambiente_x: 866
-    campo_dropdown_ambiente_y: 579
+    # ========================================
+    # COORDENADAS PÓS-LOGIN - NAVEGAÇÃO
+    # ========================================
+    menu_lateral_financeiro_x: 106
+    menu_lateral_financeiro_y: 308
+    a_pagar_x: 89
+    a_pagar_y: 349
+    fechar_modal_a_pagar_x: 1389
+    fechar_modal_a_pagar_y: 192
+    campo_empresa_x: 106
+    campo_empresa_y: 209
     
-    # Item "TESTE" dentro do dropdown
-    ambiente_teste_dropdown_x: 974
-    ambiente_teste_dropdown_y: 677
-
-    # Modal de erro de login (OK)
-    erro_login_ok_x: 957
-    erro_login_ok_y: 554
-
-    # Login Bimer (2ª tentativa - mesmas coordenadas)
-    retry_password_x: 904
-    retry_password_y: 520
-    retry_entrar_x: 1058
-    retry_entrar_y: 638
-
-    # Botão 'Fechar' do modal automático do Bimmer
-    botao_fechar_modal_automatico: "1391,192"
-
-    # Coordenadas mapeadas na VM (absolutas)
-    "menu lateral financeiro": "106,308"
-    "a pagar dentro de financeiro": "89,349"
-    "campo empresa": "106,209"
-    "fechar modal a pagar": "1389,192"
-    "fechar modal": "1391,192"
-    "ferramentas": "196,63"
-    "gerar arquivo remessa": "377,112"
-    "uma conta": "449,163"
-    "campo numero da conta": "648,360"
-    "campo layout do arquivo": "649,403"
-    "data vencimento programado inicio": "859,550"
-    "data vencimento programado fim": "980,551"
-    "botao ambos": "1032,679"
-    "botao avancar": "1171,836"
-    "ok sem titulos para processamento": "945,553"
-    "fechar modal remessa": "1453,187"
-    "fechar bimer": "1904,6"
-    "confirmar fechar sistema": "871,552"
-    "campo no bimer para alterar para ambiente de teste": "-896,584"
-    "ambiente de teste no dropdown": "-1045,673"
+    # ========================================
+    # COORDENADAS - GERAÇÃO DE REMESSA
+    # ========================================
+    ferramentas_x: 196
+    ferramentas_y: 63
+    gerar_arquivo_remessa_x: 377
+    gerar_arquivo_remessa_y: 112
+    uma_conta_x: 449
+    uma_conta_y: 163
+    campo_numero_da_conta_x: 648
+    campo_numero_da_conta_y: 360
+    campo_layout_do_arquivo_x: 649
+    campo_layout_do_arquivo_y: 403
+    data_vencimento_programado_inicio_x: 859
+    data_vencimento_programado_inicio_y: 550
+    data_vencimento_programado_fim_x: 980
+    data_vencimento_programado_fim_y: 551
+    botao_ambos_x: 1032
+    botao_ambos_y: 679
+    botao_avancar_x: 1171
+    botao_avancar_y: 836
+    fechar_modal_remessa_x: 1453
+    fechar_modal_remessa_y: 187
+    
+    # ========================================
+    # COORDENADAS - PROCESSAMENTO DE TÍTULOS
+    # ========================================
+    marcar_todos_titulos_x: 619
+    marcar_todos_titulos_y: 335
+    campo_nome_arquivo_x: 804
+    campo_nome_arquivo_y: 732
+    botao_gerar_arquivo_x: 1312
+    botao_gerar_arquivo_y: 838
+    botao_sim_confirmacao_x: 919
+    botao_sim_confirmacao_y: 581
+    botao_ok_operacao_concluida_x: 949
+    botao_ok_operacao_concluida_y: 559
+    ok_sem_titulos_x: 945
+    ok_sem_titulos_y: 553
+    
+    # ========================================
+    # COORDENADAS - FINALIZAÇÃO
+    # ========================================
+    fechar_bimer_x: 1904
+    fechar_bimer_y: 6
+    confirmar_fechar_sistema_x: 871
+    confirmar_fechar_sistema_y: 552
 
 remessas:
   # Configurações de remessas bancárias
