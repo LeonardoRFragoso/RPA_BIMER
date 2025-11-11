@@ -1,11 +1,12 @@
 """
-Script standalone para testar login no Bimer
+Script para executar automação do Bimer usando configurações do config.yaml
 Execute este script DENTRO da VM onde o Bimer está aberto
-Não precisa de conexão RDP - testa apenas o fluxo de login
+Utiliza as mesmas ações do testar_login_bimer.py mas lê configurações do YAML
 """
 import time
 import pyautogui
 import logging
+import yaml
 from pathlib import Path
 from datetime import datetime
 
@@ -22,31 +23,57 @@ pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.3
 
 # ============================================================
-# CONFIGURAÇÕES - AJUSTE CONFORME NECESSÁRIO
+# CARREGAR CONFIGURAÇÕES DO YAML
 # ============================================================
 
-# Credenciais do Bimer
-SENHA_BIMER = "Rpa@@2025"
+def carregar_config():
+    """Carrega configurações do arquivo config.yaml"""
+    config_path = Path(__file__).parent / "config.yaml"
+    
+    if not config_path.exists():
+        logger.error(f"❌ Arquivo config.yaml não encontrado em: {config_path}")
+        return None
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        logger.info(f"✓ Configurações carregadas de: {config_path}")
+        return config
+    except Exception as e:
+        logger.error(f"❌ Erro ao carregar config.yaml: {e}")
+        return None
 
-# Coordenadas capturadas (ajuste se necessário)
-DROPDOWN_AMBIENTE_X = 866
-DROPDOWN_AMBIENTE_Y = 579
-AMBIENTE_TESTE_X = 974
-AMBIENTE_TESTE_Y = 677
-CAMPO_SENHA_X = 904
-CAMPO_SENHA_Y = 520
-BOTAO_ENTRAR_X = 1058
-BOTAO_ENTRAR_Y = 638
+# Carregar configurações
+config = carregar_config()
+if not config:
+    logger.error("❌ Não foi possível carregar as configurações. Abortando.")
+    exit(1)
 
-# Coordenadas pós-login (mapeadas na VM)
-FECHAR_MODAL_X = 1391
-FECHAR_MODAL_Y = 192
+# Extrair configurações do Bimer
+bimer_config = config.get('bimmer', {})
+login_config = bimer_config.get('login', {})
+ui_elements = bimer_config.get('ui_elements', {})
+
+# Credenciais
+SENHA_BIMER = login_config.get('password', 'Rpa@@2025')
+
+# Coordenadas de login (valores padrão se não estiverem no config)
+DROPDOWN_AMBIENTE_X = ui_elements.get('dropdown_ambiente_x', 866)
+DROPDOWN_AMBIENTE_Y = ui_elements.get('dropdown_ambiente_y', 579)
+AMBIENTE_TESTE_X = ui_elements.get('ambiente_teste_x', 974)
+AMBIENTE_TESTE_Y = ui_elements.get('ambiente_teste_y', 677)
+CAMPO_SENHA_X = ui_elements.get('campo_senha_x', 904)
+CAMPO_SENHA_Y = ui_elements.get('campo_senha_y', 520)
+BOTAO_ENTRAR_X = ui_elements.get('entrar_bimer_x', 1058)
+BOTAO_ENTRAR_Y = ui_elements.get('entrar_bimer_y', 638)
+FECHAR_MODAL_X = ui_elements.get('fechar_modal_x', 1391)
+FECHAR_MODAL_Y = ui_elements.get('fechar_modal_y', 192)
 
 # Função para obter data atual no formato dd/mm/aaaa
 def obter_data_atual():
     return datetime.now().strftime("%d/%m/%Y")
 
-# Sequência de cliques pós-login
+# Sequência de cliques pós-login (MESMA do testar_login_bimer.py)
 CLIQUES_POS_LOGIN = [
     # PRIMEIRA EMPRESA - Busca inicial
     ("Financeiro (menu lateral)", 106, 308, None),
@@ -125,70 +152,55 @@ CLIQUES_POS_LOGIN = [
 def copiar_para_clipboard(texto):
     """Copia texto para área de transferência"""
     try:
-        import win32clipboard
-        import win32con
-        win32clipboard.OpenClipboard()
-        try:
-            win32clipboard.EmptyClipboard()
-            win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, texto)
-        finally:
-            win32clipboard.CloseClipboard()
-        logger.info("✓ Texto copiado para área de transferência")
+        import pyperclip
+        pyperclip.copy(texto)
         return True
-    except Exception:
-        try:
-            import pyperclip
-            pyperclip.copy(texto)
-            logger.info("✓ Texto copiado para área de transferência (pyperclip)")
-            return True
-        except Exception as e:
-            logger.error(f"✗ Falha ao copiar para área de transferência: {e}")
-            return False
+    except ImportError:
+        logger.warning("⚠️  pyperclip não instalado - usando digitação direta")
+        return False
 
 def aguardar(segundos, mensagem=""):
-    """Aguarda com mensagem opcional"""
+    """Aguarda um tempo específico com mensagem opcional"""
     if mensagem:
         logger.info(f"⏳ {mensagem}")
     time.sleep(segundos)
 
 # ============================================================
-# FLUXO DE LOGIN
+# FUNÇÃO PRINCIPAL DE LOGIN
 # ============================================================
 
 def executar_login_bimer():
-    """Executa o login no Bimer"""
+    """
+    Executa o processo completo de login no Bimer
+    """
     try:
+        logger.info("")
         logger.info("=" * 70)
-        logger.info("🤖 TESTE DE LOGIN NO BIMER - VERSÃO STANDALONE")
+        logger.info("🤖 INICIANDO AUTOMAÇÃO DO BIMER (COM CONFIG.YAML)")
         logger.info("=" * 70)
         logger.info("")
-        logger.info("⚠️  IMPORTANTE:")
-        logger.info("   1. Certifique-se de que o Bimer está ABERTO")
-        logger.info("   2. A tela de LOGIN deve estar VISÍVEL")
-        logger.info("   3. Não mova o mouse durante a execução")
+        logger.info(f"📋 Configurações:")
+        logger.info(f"   • Senha: {'*' * len(SENHA_BIMER)}")
+        logger.info(f"   • Botão Entrar: ({BOTAO_ENTRAR_X}, {BOTAO_ENTRAR_Y})")
+        logger.info(f"   • Fechar Modal: ({FECHAR_MODAL_X}, {FECHAR_MODAL_Y})")
         logger.info("")
-        logger.info("Iniciando em 3 segundos...")
-        time.sleep(3)
         
         # ========================================
         # PASSO 1: Selecionar ambiente TESTE
         # ========================================
-        logger.info("")
         logger.info("=" * 70)
-        logger.info("[PASSO 1/4] SELECIONANDO AMBIENTE TESTE NO DROPDOWN")
+        logger.info("[PASSO 1/4] SELECIONANDO AMBIENTE TESTE")
         logger.info("=" * 70)
         
-        if DROPDOWN_AMBIENTE_X and DROPDOWN_AMBIENTE_Y and AMBIENTE_TESTE_X and AMBIENTE_TESTE_Y:
-            logger.info(f"→ Clicando no dropdown em ({DROPDOWN_AMBIENTE_X}, {DROPDOWN_AMBIENTE_Y})")
-            pyautogui.click(DROPDOWN_AMBIENTE_X, DROPDOWN_AMBIENTE_Y)
-            aguardar(0.5, "Aguardando dropdown abrir...")
-            
-            logger.info(f"→ Clicando em 'TESTE' em ({AMBIENTE_TESTE_X}, {AMBIENTE_TESTE_Y})")
-            pyautogui.click(AMBIENTE_TESTE_X, AMBIENTE_TESTE_Y)
-            aguardar(0.5, "Ambiente selecionado")
-            logger.info("✓ Ambiente TESTE selecionado com sucesso")
-        else:
-            logger.warning("⚠️  Coordenadas do dropdown não configuradas - pulando passo 1")
+        logger.info(f"→ Clicando no dropdown de ambiente em ({DROPDOWN_AMBIENTE_X}, {DROPDOWN_AMBIENTE_Y})")
+        pyautogui.click(DROPDOWN_AMBIENTE_X, DROPDOWN_AMBIENTE_Y)
+        aguardar(0.5)
+        logger.info("✓ Dropdown aberto")
+        
+        logger.info(f"→ Selecionando TESTE em ({AMBIENTE_TESTE_X}, {AMBIENTE_TESTE_Y})")
+        pyautogui.click(AMBIENTE_TESTE_X, AMBIENTE_TESTE_Y)
+        aguardar(0.5)
+        logger.info("✓ Ambiente TESTE selecionado")
         
         # ========================================
         # PASSO 2: Preencher senha
@@ -198,37 +210,20 @@ def executar_login_bimer():
         logger.info("[PASSO 2/4] PREENCHENDO SENHA")
         logger.info("=" * 70)
         
-        if not CAMPO_SENHA_X or not CAMPO_SENHA_Y:
-            logger.error("✗ Coordenadas do campo de senha não configuradas!")
-            return False
-        
         logger.info(f"→ Clicando no campo de senha em ({CAMPO_SENHA_X}, {CAMPO_SENHA_Y})")
         pyautogui.click(CAMPO_SENHA_X, CAMPO_SENHA_Y)
-        aguardar(0.4, "Campo focado")
+        aguardar(0.3)
         
-        logger.info("→ Limpando campo (Ctrl+A)")
-        pyautogui.hotkey('ctrl', 'a')
-        aguardar(0.2)
-        
-        # Libera teclas modificadoras
-        for k in ('shift', 'ctrl', 'alt'):
-            try:
-                pyautogui.keyUp(k)
-            except:
-                pass
-        aguardar(0.2)
-        
-        logger.info(f"→ Colando senha ({len(SENHA_BIMER)} caracteres)")
+        # Tentar usar clipboard primeiro (mais rápido e confiável)
         if copiar_para_clipboard(SENHA_BIMER):
-            aguardar(0.2)
+            logger.info("→ Colando senha via clipboard (Ctrl+V)")
             pyautogui.hotkey('ctrl', 'v')
-            aguardar(0.3)
-            logger.info("✓ Senha colada com sucesso")
         else:
-            logger.warning("⚠️  Falha ao copiar. Digitando caractere por caractere...")
-            pyautogui.write(SENHA_BIMER, interval=0.08)
-            aguardar(0.3)
-            logger.info("✓ Senha digitada com sucesso")
+            logger.info("→ Digitando senha caractere por caractere")
+            pyautogui.write(SENHA_BIMER, interval=0.1)
+        
+        aguardar(0.5)
+        logger.info("✓ Senha preenchida")
         
         # ========================================
         # PASSO 3: Clicar em Entrar
@@ -396,37 +391,33 @@ def executar_login_bimer():
     except Exception as e:
         logger.error("")
         logger.error("=" * 70)
-        logger.error(f"❌ ERRO DURANTE EXECUÇÃO: {str(e)}")
+        logger.error("❌ ERRO DURANTE A EXECUÇÃO")
         logger.error("=" * 70)
-        import traceback
-        logger.error(traceback.format_exc())
+        logger.error(f"Erro: {str(e)}")
+        logger.error("")
+        logger.error("Dicas:")
+        logger.error("  • Verifique se o Bimer está aberto")
+        logger.error("  • Confirme se as coordenadas estão corretas")
+        logger.error("  • Certifique-se de que a tela de login está visível")
+        logger.error("")
         return False
 
 # ============================================================
-# EXECUÇÃO PRINCIPAL
+# EXECUÇÃO
 # ============================================================
 
-if __name__ == '__main__':
-    try:
-        # Captura posição inicial do mouse
-        pos_inicial = pyautogui.position()
-        logger.info(f"Posição inicial do mouse: {pos_inicial}")
-        
-        # Executa o login
-        sucesso = executar_login_bimer()
-        
-        # Resultado final
-        if sucesso:
-            logger.info("")
-            logger.info("🎉 Script executado com sucesso!")
-            exit(0)
-        else:
-            logger.error("")
-            logger.error("💥 Script finalizado com erros")
-            exit(1)
-            
-    except Exception as e:
-        logger.error(f"Erro fatal: {e}")
-        import traceback
-        traceback.print_exc()
-        exit(1)
+if __name__ == "__main__":
+    logger.info("")
+    logger.info("╔" + "═" * 68 + "╗")
+    logger.info("║" + " " * 15 + "RPA BIMER - TESTE DE LOGIN (CONFIG)" + " " * 16 + "║")
+    logger.info("╚" + "═" * 68 + "╝")
+    logger.info("")
+    
+    sucesso = executar_login_bimer()
+    
+    if sucesso:
+        logger.info("✅ Script finalizado com sucesso!")
+    else:
+        logger.info("⚠️  Script finalizado com erros")
+    
+    logger.info("")
