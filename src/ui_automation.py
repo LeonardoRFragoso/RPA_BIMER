@@ -40,6 +40,19 @@ class BimmerAutomation:
         self.retry_pwd_y = self.ui.get('retry_password_y')
         self.retry_enter_x = self.ui.get('retry_entrar_x')
         self.retry_enter_y = self.ui.get('retry_entrar_y')
+        raw_modal = self.ui.get('botao_fechar_modal_automatico')
+        self.modal_close_x, self.modal_close_y = (None, None)
+        if isinstance(raw_modal, str):
+            try:
+                parts = [p.strip() for p in raw_modal.replace(';', ',').split(',')]
+                if len(parts) >= 2:
+                    self.modal_close_x = int(parts[0])
+                    self.modal_close_y = int(parts[1])
+            except Exception:
+                self.modal_close_x, self.modal_close_y = (None, None)
+        if self.modal_close_x is None or self.modal_close_y is None:
+            self.modal_close_x = self.ui.get('botao_fechar_modal_automatico_x')
+            self.modal_close_y = self.ui.get('botao_fechar_modal_automatico_y')
 
     def digitar_senha_char_por_char(self, senha: str, intervalo: float = 0.06):
         """Digita a senha caractere a caractere, com tratamentos para caracteres especiais comuns."""
@@ -57,13 +70,11 @@ class BimmerAutomation:
                     try:
                         pyautogui.hotkey('ctrl', 'alt', 'q')
                     except Exception:
-                        pyautogui.typewrite('@', interval=0.01)
+                        # Fallback: usar write() ao invés de typewrite()
+                        pyautogui.write('@')
                 else:
-                    # typewrite lida com maiúsculas/minúsculas; números usam press com segurança
-                    if ch.isdigit():
-                        pyautogui.press(ch)
-                    else:
-                        pyautogui.typewrite(ch, interval=0.01)
+                    # Usa write() para caracteres normais (lida melhor com maiúsculas/minúsculas)
+                    pyautogui.write(ch)
                 time.sleep(intervalo)
             return True
         except Exception as e:
@@ -150,148 +161,168 @@ class BimmerAutomation:
         try:
             logger.info("Aguardando tela de login do Bimer...")
             self.focar_janela_bimer()
-            # Aguarda overlay/splash encerrar
             self.aguardar_login_pronto(max_wait=4.0)
-
-            # Aguarda alguns segundos a tela de login estar visível
-            # NOTA: Em RDP, não confiamos em enumerar janelas locais.
             time.sleep(min(max_wait, 5.0))
 
-            sw, sh = pyautogui.size()
-            cx, cy = sw // 2, sh // 2
+            # Aguarda mais tempo para garantir que a tela está estável
+            time.sleep(1.0)
 
-            # Se houver um modal de erro "OK", fechar com Enter
-            logger.info("Garantindo que não há modal de erro aberto (OK)...")
-            pyautogui.press('enter')
-            time.sleep(0.3)
-
-            # Caso tenhamos coordenadas do campo senha, usamos elas primeiro
+            # Foca no campo de senha usando coordenadas mapeadas
             if self.pwd_x is not None and self.pwd_y is not None:
-                logger.info(f"[Login Bimer] Focando campo de senha mapeado em ({self.pwd_x}, {self.pwd_y})")
-                pyautogui.moveTo(self.pwd_x, self.pwd_y, duration=0.2)
-                time.sleep(0.1)
+                logger.info(f"Focando campo de senha em ({self.pwd_x}, {self.pwd_y})")
                 pyautogui.click(self.pwd_x, self.pwd_y)
+                time.sleep(0.4)
+                pyautogui.hotkey('ctrl', 'a')
                 time.sleep(0.3)
             else:
-                # Clica próximo ao centro do diálogo para garantir foco
+                # Fallback: clica no centro da tela
+                sw, sh = pyautogui.size()
+                pyautogui.click(sw // 2, sh // 2 + 60)
+                time.sleep(0.4)
+                pyautogui.hotkey('ctrl', 'a')
+                time.sleep(0.3)
+
+            # Libera teclas modificadoras antes de colar
+            for k in ('shift', 'ctrl', 'alt'):
                 try:
-                    logger.info(f"Focando diálogo de login (centro de tela) em ({cx}, {cy})")
-                    pyautogui.moveTo(cx, cy, duration=0.2)
-                    time.sleep(0.1)
-                    pyautogui.click(cx, cy)
-                    time.sleep(0.4)
-                except Exception as e:
-                    logger.warning(f"Falha ao focar diálogo do Bimer: {e}")
-
-            # Se não havia coordenada, tenta offsets relativos
-            if self.pwd_x is None or self.pwd_y is None:
-                logger.info("Localizando campo de senha por clique relativo...")
-                for dy in (40, 60, 80):
-                    px, py = cx, cy + dy
-                    logger.info(f"Tentando focar campo de senha em ({px}, {py}) [offset {dy}]")
-                    pyautogui.moveTo(px, py, duration=0.15)
-                    time.sleep(0.1)
-                    pyautogui.click(px, py)
-                    time.sleep(0.2)
-                    # Pequena limpeza para assumir foco
-                    pyautogui.hotkey('ctrl', 'a'); time.sleep(0.05); pyautogui.press('delete')
-                    time.sleep(0.1)
-                    break
-
-            # Limpa o campo de senha
-            pyautogui.hotkey('ctrl', 'a')
-            time.sleep(0.1)
-            pyautogui.press('delete')
-            time.sleep(0.2)
-
-            # Garante que nenhuma tecla modificadora ficou presa
-            try:
-                for k in ('shift', 'ctrl', 'alt'):
                     pyautogui.keyUp(k)
+                except:
+                    pass
+            time.sleep(0.3)
+
+            # Cola a senha via área de transferência
+            logger.info(f"Colando senha: '{password}'")
+            if self.copiar_para_area_transferencia(password):
+                time.sleep(0.3)
+                pyautogui.hotkey('ctrl', 'v')
+                time.sleep(0.4)
+                
+                logger.info("✓ Senha colada com sucesso")
+            else:
+                logger.warning("Falha ao colar. Usando fallback...")
+                self.digitar_senha_char_por_char(password, intervalo=0.08)
+                time.sleep(0.4)
+
+            # Verificação pré-login: garante que o campo contém exatamente a senha
+            try:
+                pyautogui.hotkey('ctrl', 'a')
+                time.sleep(0.1)
+                pyautogui.hotkey('ctrl', 'c')
+                time.sleep(0.1)
+                conteudo_campo = self.ler_area_transferencia()
+                if conteudo_campo != password:
+                    logger.warning("Conteúdo divergente antes do login; recoloando senha")
+                    if self.copiar_para_area_transferencia(password):
+                        pyautogui.hotkey('ctrl', 'v')
+                        time.sleep(0.3)
             except Exception:
                 pass
 
-            # Digita a senha em duas fases para evitar vírgula inicial e garantir '@'
-            logger.info("Digitando senha do Bimer caractere por caractere (fase 1: 'Teste123')...")
-            base = "Teste123"
-            self.digitar_senha_char_por_char(base, intervalo=0.06)
-            time.sleep(0.15)
-            logger.info("Digitando caractere '@' (fase 2)...")
-            # Tenta AltGr+Q; fallback: colar '@'
-            ok_at = True
-            try:
-                pyautogui.hotkey('ctrl', 'alt', 'q')
-            except Exception:
-                ok_at = False
-            time.sleep(0.15)
-            if not ok_at:
-                if self.copiar_para_area_transferencia("@"):
-                    pyautogui.hotkey('ctrl', 'v')
-                    time.sleep(0.1)
-                else:
-                    pyautogui.typewrite('@', interval=0.05)
-                    time.sleep(0.1)
+            # Aguarda um pouco antes de clicar em Entrar
+            time.sleep(0.5)
 
-            # Verifica conteúdo: Ctrl+A, Ctrl+C, compara
-            pyautogui.hotkey('ctrl', 'a'); time.sleep(0.1); pyautogui.hotkey('ctrl', 'c'); time.sleep(0.15)
-            conteudo = self.ler_area_transferencia()
-            logger.info(f"Senha lida do campo (debug): '{conteudo}'")
-            if conteudo != password:
-                logger.warning("Senha no campo não corresponde. Retentando digitação completa...")
-                # Reinsere corretamente: limpa e digita tudo char-por-char
-                pyautogui.press('delete'); time.sleep(0.1)
-                self.digitar_senha_char_por_char(password, intervalo=0.08)
-                time.sleep(0.15)
-                pyautogui.hotkey('ctrl', 'a'); time.sleep(0.1); pyautogui.hotkey('ctrl', 'c'); time.sleep(0.15)
-                conteudo = self.ler_area_transferencia()
-                logger.info(f"Senha lida após retentativa (debug): '{conteudo}'")
-
-            # Confirma (Enter ou clique no botão 'Entrar' mapeado)
+            # Clica no botão Entrar
             if self.enter_x is not None and self.enter_y is not None:
-                logger.info(f"[Login Bimer] Clicando no botão Entrar em ({self.enter_x}, {self.enter_y})")
-                pyautogui.moveTo(self.enter_x, self.enter_y, duration=0.15)
-                time.sleep(0.1)
+                logger.info(f"Clicando em Entrar ({self.enter_x}, {self.enter_y})")
                 pyautogui.click(self.enter_x, self.enter_y)
-                time.sleep(1.5)
             else:
-                logger.info("Confirmando login no Bimer (Enter)...")
+                logger.info("Confirmando com Enter")
                 pyautogui.press('enter')
-                time.sleep(2.0)
-
-            # Segunda tentativa usando coordenadas fornecidas (se houver modal de erro)
-            if self.error_ok_x is not None and self.error_ok_y is not None \
-               and self.retry_pwd_x is not None and self.retry_pwd_y is not None \
-               and self.retry_enter_x is not None and self.retry_enter_y is not None:
-                logger.info("[Login Bimer] Verificando modal de erro e realizando 2ª tentativa por coordenadas...")
-                # Clica no OK do modal de erro
-                pyautogui.moveTo(self.error_ok_x, self.error_ok_y, duration=0.15)
-                time.sleep(0.1)
-                pyautogui.click(self.error_ok_x, self.error_ok_y)
-                time.sleep(0.5)
-                # Foca o campo de senha (coordenadas retry)
-                pyautogui.moveTo(self.retry_pwd_x, self.retry_pwd_y, duration=0.15)
-                time.sleep(0.1)
-                pyautogui.click(self.retry_pwd_x, self.retry_pwd_y)
-                time.sleep(0.2)
-                pyautogui.hotkey('ctrl', 'a'); time.sleep(0.1); pyautogui.press('delete'); time.sleep(0.2)
-                # Digita a senha novamente (2ª tentativa) em duas fases
-                base = "Teste123"
-                self.digitar_senha_char_por_char(base, intervalo=0.06)
-                time.sleep(0.1)
+            
+            time.sleep(2.5)
+            
+            # Segunda tentativa (sempre forçada para sanar vírgula/ruído)
+            try:
+                # Garante foco na janela correta
+                self.focar_janela_bimer()
                 try:
-                    pyautogui.hotkey('ctrl', 'alt', 'q')
+                    sw, sh = pyautogui.size()
+                    pyautogui.click(sw // 2, sh // 2)  # clique neutro para trazer foco
+                    time.sleep(0.3)
                 except Exception:
-                    if self.copiar_para_area_transferencia("@"):
-                        pyautogui.hotkey('ctrl', 'v')
-                    else:
-                        pyautogui.typewrite('@', interval=0.05)
+                    pass
+                # Fecha modal de erro caso existam coordenadas mapeadas
+                if self.error_ok_x is not None and self.error_ok_y is not None:
+                    logger.info(f"Tentando fechar modal de erro em ({self.error_ok_x}, {self.error_ok_y})")
+                    pyautogui.moveTo(self.error_ok_x, self.error_ok_y, duration=0.15)
+                    time.sleep(0.1)
+                    pyautogui.click(self.error_ok_x, self.error_ok_y)
+                    time.sleep(0.8)
+
+                # Refoca o campo de senha para nova inserção
+                alvo_x = self.retry_pwd_x if self.retry_pwd_x is not None else self.pwd_x
+                alvo_y = self.retry_pwd_y if self.retry_pwd_y is not None else self.pwd_y
+                if alvo_x is not None and alvo_y is not None:
+                    logger.info(f"2ª tentativa: focando campo de senha em ({alvo_x}, {alvo_y})")
+                    pyautogui.moveTo(alvo_x, alvo_y, duration=0.15)
+                    time.sleep(0.1)
+                    pyautogui.click(alvo_x, alvo_y)
+                    time.sleep(0.3)
+                else:
+                    sw, sh = pyautogui.size()
+                    logger.info("2ª tentativa: focando campo de senha (fallback centro)")
+                    pyautogui.click(sw // 2, sh // 2 + 60)
+                    time.sleep(0.3)
+
+                # Limpa campo de senha selecionando tudo (sem Delete para evitar vírgula via NumPad)
+                pyautogui.hotkey('ctrl', 'a')
+                time.sleep(0.3)
+
+                # Garante que modificadoras estão liberadas
+                for k in ('shift', 'ctrl', 'alt'):
+                    try:
+                        pyautogui.keyUp(k)
+                    except:
+                        pass
                 time.sleep(0.2)
-                # Clica no botão Entrar (coordenadas retry)
-                pyautogui.moveTo(self.retry_enter_x, self.retry_enter_y, duration=0.15)
-                time.sleep(0.1)
-                pyautogui.click(self.retry_enter_x, self.retry_enter_y)
-                time.sleep(1.5)
+
+                # Recarrega senha na área de transferência e cola novamente
+                if self.copiar_para_area_transferencia(password):
+                    logger.info("2ª tentativa: colando senha")
+                    pyautogui.hotkey('ctrl', 'v')
+                    time.sleep(0.4)
+                else:
+                    logger.warning("2ª tentativa: falha ao copiar senha; digitando char-por-char")
+                    self.digitar_senha_char_por_char(password, intervalo=0.08)
+                    time.sleep(0.3)
+
+                # Verificação pré-login na 2ª tentativa
+                try:
+                    pyautogui.hotkey('ctrl', 'a')
+                    time.sleep(0.1)
+                    pyautogui.hotkey('ctrl', 'c')
+                    time.sleep(0.1)
+                    conteudo_campo2 = self.ler_area_transferencia()
+                    if conteudo_campo2 != password:
+                        logger.warning("2ª tentativa: conteúdo divergente; recoloando senha")
+                        if self.copiar_para_area_transferencia(password):
+                            pyautogui.hotkey('ctrl', 'v')
+                            time.sleep(0.3)
+                except Exception:
+                    pass
+
+                # Clica Entrar novamente (usa retry_enter se configurado)
+                btn_x = self.retry_enter_x if self.retry_enter_x is not None else self.enter_x
+                btn_y = self.retry_enter_y if self.retry_enter_y is not None else self.enter_y
+                if btn_x is not None and btn_y is not None:
+                    logger.info(f"2ª tentativa: clicando em Entrar ({btn_x}, {btn_y})")
+                    pyautogui.moveTo(btn_x, btn_y, duration=0.15)
+                    time.sleep(0.1)
+                    pyautogui.click(btn_x, btn_y)
+                else:
+                    logger.info("2ª tentativa: confirmando com Enter")
+                    pyautogui.press('enter')
+                time.sleep(2.5)
+            except Exception as e2:
+                logger.warning(f"Falha na lógica de 2ª tentativa: {e2}")
+            
+            logger.info("✓ Login no Bimer concluído")
+            try:
+                self.fechar_modal_automatico()
+            except Exception:
+                pass
             return True
+            
         except Exception as e:
             logger.error(f"Erro ao fazer login no Bimer: {str(e)}")
             return False
@@ -431,6 +462,24 @@ class BimmerAutomation:
                 time.sleep(0.5)
         
         return False
+    
+    def fechar_modal_automatico(self):
+        try:
+            x, y = self.modal_close_x, self.modal_close_y
+            if x is None or y is None:
+                return False
+            self.focar_janela_bimer()
+            try:
+                pyautogui.moveTo(x, y, duration=0.15)
+                time.sleep(0.1)
+            except Exception:
+                pass
+            pyautogui.click(x, y)
+            time.sleep(0.5)
+            return True
+        except Exception as e:
+            logger.warning(f"Falha ao fechar modal automatico: {e}")
+            return False
     
     def clicar(self, x, y, botao='left', cliques=1):
         """Realiza clique na posição especificada"""

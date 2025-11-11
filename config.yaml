@@ -44,6 +44,9 @@ bimmer:
     retry_entrar_x: 935
     retry_entrar_y: 644
 
+    # Botão 'Fechar' do modal automático do Bimer
+    botao_fechar_modal_automatico: "1393,193"
+
 remessas:
   # Configurações de remessas bancárias
   banco_padrao: ""

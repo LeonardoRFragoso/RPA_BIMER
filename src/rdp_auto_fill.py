@@ -281,8 +281,8 @@ class RDPAutoFill:
             logger.info("=" * 60)
             
             # Primeiro, garante que saímos do campo de usuário
-            logger.info("Pressionando END para ir ao final do campo de usuário...")
-            pyautogui.press('end')
+            logger.info("Movendo cursor para a direita para sair do campo de usuário (evita End/NumPad)...")
+            pyautogui.press('right')
             time.sleep(0.5)
             
             # CRÍTICO: Pressiona Tab para sair do campo de usuário e ir para o campo de senha
@@ -324,6 +324,7 @@ class RDPAutoFill:
             logger.info("=" * 60)
             
             # Tenta focar o campo de senha clicando em uma área provável dentro da janela
+            # Usa triplo clique para selecionar todo o texto
             try:
                 import pygetwindow as gw
                 windows = gw.getWindowsWithTitle("Segurança do Windows") or gw.getWindowsWithTitle("Windows Security")
@@ -331,218 +332,56 @@ class RDPAutoFill:
                     window = windows[0]
                     center_x = window.left + window.width // 2
                     senha_y = window.top + int(window.height * 0.58)
-                    logger.info(f"Clicando para focar no campo de senha em ({center_x}, {senha_y})")
+                    logger.info(f"Clicando no campo de senha em ({center_x}, {senha_y})")
                     pyautogui.moveTo(center_x, senha_y, duration=0.2)
                     time.sleep(0.2)
-                    pyautogui.click(center_x, senha_y)
+                    # Triplo clique para selecionar todo o texto
+                    pyautogui.click(center_x, senha_y, clicks=3, interval=0.1)
                     time.sleep(0.5)
                 else:
-                    logger.warning("Janela 'Segurança do Windows' não localizada para clique; seguindo com TAB")
+                    logger.warning("Janela 'Segurança do Windows' não localizada")
             except Exception as e:
-                logger.warning(f"Falha ao focar por clique no campo de senha: {e}")
+                logger.warning(f"Falha ao focar campo de senha: {e}")
             
-            # CRÍTICO: Recarrega a senha do config ANTES de usar
-            # Recarrega diretamente do YAML para garantir que está atualizado (ignora env)
+            # Recarrega a senha do config
             vm_config_atual = load_config_yaml_only().get('vm', {})
             senha_para_usar = vm_config_atual.get('password', '')
             usuario_nao_usar = vm_config_atual.get('username', '')
             
-            # Verificação crítica: garante que não estamos usando o username
-            if not senha_para_usar:
-                logger.error("=" * 60)
-                logger.error("ERRO CRÍTICO: Senha não foi carregada do config!")
-                logger.error("Verifique se a senha está configurada corretamente no config.yaml")
-                logger.error("=" * 60)
+            # Validações básicas
+            if not senha_para_usar or senha_para_usar == usuario_nao_usar:
+                logger.error("Erro: Senha inválida ou igual ao usuário!")
                 return False
             
-            if senha_para_usar == usuario_nao_usar:
-                logger.error("=" * 60)
-                logger.error("ERRO CRÍTICO: Senha está igual ao username!")
-                logger.error(f"Senha: '{senha_para_usar}'")
-                logger.error(f"Username: '{usuario_nao_usar}'")
-                logger.error("Isso não deve acontecer! Verifique o config.yaml")
-                logger.error("=" * 60)
-                return False
+            logger.info(f"Senha: {len(senha_para_usar)} caracteres")
             
-            # Verificação adicional: se a senha é exatamente "parceiro", algo está muito errado
-            if senha_para_usar.lower() == 'parceiro':
-                logger.error("=" * 60)
-                logger.error("ERRO CRÍTICO: A senha é exatamente 'parceiro' (o username)!")
-                logger.error("Isso não deve acontecer! Verifique o config.yaml")
-                logger.error("ABORTANDO: Não vou digitar o username como senha!")
-                logger.error("=" * 60)
-                return False
-            
-            logger.info(f"Senha a ser digitada: '{senha_para_usar}'")
-            logger.info(f"Tamanho da senha: {len(senha_para_usar)} caracteres")
-            logger.info(f"Usuário (NÃO deve ser digitado aqui): '{usuario_nao_usar}'")
-            logger.info("=" * 60)
-            
-            # CRÍTICO: Limpa o campo de senha completamente ANTES de digitar
-            # Isso garante que não há texto residual do campo de usuário
-            logger.info("=" * 60)
-            logger.info("LIMPEZA FINAL DO CAMPO DE SENHA - CRÍTICO")
-            logger.info("=" * 60)
-            logger.info("Limpando campo de senha completamente...")
-            
-            # Pressiona Home para garantir que estamos no início
-            pyautogui.press('home')
+            # Libera teclas modificadoras antes de colar
+            for k in ('shift', 'ctrl', 'alt'):
+                try:
+                    pyautogui.keyUp(k)
+                except:
+                    pass
             time.sleep(0.3)
             
-            # Pressiona Ctrl+A para selecionar tudo
-            pyautogui.hotkey('ctrl', 'a')
-            time.sleep(0.3)
+            # Digita a senha usando área de transferência
+            senha_para_digitar = str(senha_para_usar).strip()
             
-            # Pressiona Delete para limpar
-            pyautogui.press('delete')
-            time.sleep(0.5)
-            
-            # Pressiona Backspace também para garantir
-            pyautogui.press('backspace')
-            time.sleep(0.5)
-            
-            # Pressiona Ctrl+A novamente e Delete para garantir que está limpo
-            pyautogui.hotkey('ctrl', 'a')
-            time.sleep(0.3)
-            pyautogui.press('delete')
-            time.sleep(0.5)
-            
-            # Pressiona Home novamente para garantir que estamos no início
-            pyautogui.press('home')
-            time.sleep(0.5)
-            
-            logger.info("Campo de senha limpo e pronto para receber a senha")
-            logger.info("=" * 60)
-            
-            # Aguarda um pouco mais para garantir que o campo de senha está pronto
-            logger.info("Aguardando campo de senha estar completamente pronto...")
-            time.sleep(1.5)
-            
-            # Digita a senha caractere por caractere usando a função especial
-            logger.info("=" * 60)
-            logger.info("INICIANDO DIGITAÇÃO DA SENHA")
-            logger.info("=" * 60)
-            
-            # VERIFICAÇÃO CRÍTICA: Garante que estamos usando a SENHA, não o usuário
-            # Usa a senha que já foi carregada anteriormente
-            senha_para_digitar = str(senha_para_usar).strip()  # Remove espaços em branco
-            
-            # LOG CRÍTICO: Mostra exatamente o que será digitado
-            logger.info("=" * 60)
-            logger.info("VERIFICAÇÃO CRÍTICA: O QUE SERÁ DIGITADO")
-            logger.info("=" * 60)
-            logger.info(f"SENHA a ser digitada: '{senha_para_digitar}'")
-            logger.info(f"USUÁRIO (NÃO usar): '{usuario_nao_usar}'")
-            logger.info("=" * 60)
-            
-            # Verifica se a senha foi carregada corretamente
-            if not senha_para_digitar:
-                logger.error("=" * 60)
-                logger.error("ERRO CRÍTICO: Senha não foi carregada do config.yaml!")
-                logger.error("Verifique se a senha está configurada corretamente no arquivo config.yaml")
-                logger.error("=" * 60)
+            # Validações básicas
+            if not senha_para_digitar or senha_para_digitar == usuario_nao_usar:
+                logger.error("Erro: Senha inválida ou igual ao usuário!")
                 return False
             
-            logger.info("=" * 60)
-            logger.info("VERIFICAÇÃO FINAL ANTES DE DIGITAR A SENHA")
-            logger.info("=" * 60)
-            logger.info(f"✓ SENHA a ser digitada: '{senha_para_digitar}' (tamanho: {len(senha_para_digitar)} caracteres)")
-            logger.info(f"✗ USUÁRIO (NÃO usar aqui): '{usuario_nao_usar}' (tamanho: {len(usuario_nao_usar)} caracteres)")
-            logger.info("=" * 60)
-            
-            # Verificação final antes de digitar - CRÍTICO
-            if senha_para_digitar == usuario_nao_usar:
-                logger.error("=" * 60)
-                logger.error("ERRO CRÍTICO: A senha está igual ao usuário!")
-                logger.error(f"Senha: '{senha_para_digitar}'")
-                logger.error(f"Usuário: '{usuario_nao_usar}'")
-                logger.error("Isso não deve acontecer! Verifique o config.yaml")
-                logger.error("=" * 60)
-                return False
-            
-            # Verifica se a senha não está vazia
-            if not senha_para_digitar or len(senha_para_digitar) == 0:
-                logger.error("=" * 60)
-                logger.error("ERRO CRÍTICO: Senha está vazia!")
-                logger.error("Verifique se a senha está configurada no config.yaml")
-                logger.error("=" * 60)
-                return False
-            
-            # Verifica se a senha tem pelo menos 8 caracteres (senha real tem 12)
-            if len(senha_para_digitar) < 8:
-                logger.warning(f"ATENÇÃO: Senha tem apenas {len(senha_para_digitar)} caracteres (esperado: 12)")
-            
-            # Verificação adicional: se a senha começa com "parceiro", algo está errado
-            if senha_para_digitar.lower().startswith('parceiro'):
-                logger.error("=" * 60)
-                logger.error("ERRO CRÍTICO: A senha parece ser o username!")
-                logger.error(f"Senha detectada: '{senha_para_digitar}'")
-                logger.error(f"Username: '{usuario_nao_usar}'")
-                logger.error("A senha não deve começar com o username. Verifique o config.yaml")
-                logger.error("=" * 60)
-                return False
-            
-            logger.info("=" * 60)
-            logger.info("CONFIRMAÇÃO FINAL: Vou digitar a SENHA (não o usuário)")
-            logger.info(f"SENHA: '{senha_para_digitar}'")
-            logger.info(f"PRIMEIRO caractere da senha: '{senha_para_digitar[0]}'")
-            logger.info(f"ÚLTIMO caractere da senha: '{senha_para_digitar[-1]}'")
-            logger.info("Iniciando digitação caractere por caractere...")
-            logger.info("=" * 60)
-            
-            # VERIFICAÇÃO FINAL CRÍTICA: Garante que não estamos usando o username
-            if senha_para_digitar == usuario_nao_usar or senha_para_digitar.lower() == usuario_nao_usar.lower():
-                logger.error("=" * 60)
-                logger.error("ERRO CRÍTICO: Tentando digitar o username como senha!")
-                logger.error(f"Senha detectada: '{senha_para_digitar}'")
-                logger.error(f"Username: '{usuario_nao_usar}'")
-                logger.error("ABORTANDO: Não vou digitar o username como senha!")
-                logger.error("=" * 60)
-                return False
-            
-            # Verificação adicional: se a senha é exatamente "parceiro", algo está muito errado
-            if senha_para_digitar.lower() == 'parceiro':
-                logger.error("=" * 60)
-                logger.error("ERRO CRÍTICO: A senha é exatamente 'parceiro' (o username)!")
-                logger.error("Isso não deve acontecer! Verifique o config.yaml")
-                logger.error("ABORTANDO: Não vou digitar o username como senha!")
-                logger.error("=" * 60)
-                return False
-            
-            # VERIFICAÇÃO FINAL ABSOLUTA: Garante que estamos usando a senha correta
-            # Recarrega novamente do YAML para garantir que está correto
-            vm_config_final = load_config_yaml_only().get('vm', {})
-            senha_final = str(vm_config_final.get('password', '')).strip()
-            usuario_final = str(vm_config_final.get('username', '')).strip()
-            
-            # Se a senha final for diferente da senha para digitar, usa a senha final
-            if senha_final != senha_para_digitar:
-                logger.warning("=" * 60)
-                logger.warning("ATENÇÃO: Senha recarregada do config é diferente!")
-                logger.warning(f"Senha anterior: '{senha_para_digitar}'")
-                logger.warning(f"Senha do config: '{senha_final}'")
-                logger.warning("Usando senha do config...")
-                logger.warning("=" * 60)
-                senha_para_digitar = senha_final
-            
-            # VERIFICAÇÃO FINAL ABSOLUTA: Garante que não estamos usando o username
-            if senha_para_digitar == usuario_final or senha_para_digitar.lower() == usuario_final.lower():
-                logger.error("=" * 60)
-                logger.error("ERRO CRÍTICO ABSOLUTO: Tentando digitar o username como senha!")
-                logger.error(f"Senha detectada: '{senha_para_digitar}'")
-                logger.error(f"Username: '{usuario_final}'")
-                logger.error("ABORTANDO COMPLETAMENTE: Não vou digitar o username como senha!")
-                logger.error("=" * 60)
-                return False
-            
-            # Digita a senha (primeiro tenta colar via área de transferência para evitar problemas de layout)
-            logger.info("=" * 60)
-            logger.info("PREENCHENDO SENHA: Tentando colar via área de transferência (Ctrl+V)")
+            logger.info(f"Colando senha do Windows RDP via área de transferência...")
             colado = False
             try:
                 if self.copiar_para_area_transferencia(senha_para_digitar):
                     pyautogui.hotkey('ctrl', 'v')
-                    time.sleep(0.5)
+                    time.sleep(0.4)
+                    
+                    # CRÍTICO: Desseleciona movendo o cursor para a direita (evita End/NumPad)
+                    pyautogui.press('right')
+                    time.sleep(0.3)
+                    
                     colado = True
                     logger.info("Senha colada via Ctrl+V com sucesso")
                 else:
@@ -550,31 +389,15 @@ class RDPAutoFill:
             except Exception as e:
                 logger.warning(f"Falha ao colar senha via Ctrl+V: {e}")
             
-            resultado = True
             if not colado:
-                # Fallback para digitação caractere a caractere (pode depender de layout)
-                logger.info("=" * 60)
+                # Fallback para digitação caractere a caractere
                 logger.info("Fallback: Digitando senha caractere por caractere")
-                logger.info(f"Tamanho da senha: {len(senha_para_digitar)} caracteres")
-                logger.info(f"Primeiro caractere: '{senha_para_digitar[0]}'")
-                logger.info(f"Último caractere: '{senha_para_digitar[-1]}'")
-                logger.info("=" * 60)
-                resultado = self.digitar_texto_com_especiais(senha_para_digitar, intervalo=0.08)
-            time.sleep(0.5)
+                if not self.digitar_texto_com_especiais(senha_para_digitar, intervalo=0.08):
+                    logger.error("Erro ao digitar senha")
+                    return False
             
-            if resultado:
-                logger.info("=" * 60)
-                logger.info("✓ DIGITAÇÃO DA SENHA CONCLUÍDA")
-                logger.info(f"Senha digitada: {len(senha_para_digitar)} caracteres")
-                logger.info(f"Primeiro caractere: '{senha_para_digitar[0]}'")
-                logger.info(f"Último caractere: '{senha_para_digitar[-1]}'")
-                logger.info(f"Senha completa digitada: '{senha_para_digitar}'")
-                logger.info("=" * 60)
-            else:
-                logger.error("=" * 60)
-                logger.error("✗ ERRO: Digitação da senha falhou!")
-                logger.error("=" * 60)
-                return False
+            time.sleep(0.5)
+            logger.info("✓ Senha do Windows RDP digitada com sucesso")
             
             # Marca "Lembrar-me" e confirma com múltiplas estratégias
             logger.debug("Marcando 'Lembrar-me' e confirmando...")
