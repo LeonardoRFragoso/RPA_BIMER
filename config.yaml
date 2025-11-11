@@ -15,37 +15,65 @@ bimmer:
   # Modo temporário: pular processamento de remessas (não carregar CSV agora)
   skip_remessas: true
   
+  # Credenciais de login do Bimer
+  login:
+    username: "RPA"
+    password: "Rpa@@2025"
+    account_type_label: "TESTE (ODBC)"
+  
   # Coordenadas do ícone do Bimmer na área de trabalho
   # Use o script mapear_icone_bimmer.py para capturar essas coordenadas
   icon_x: 2938  # Coordenada X do ícone do Bimmer
   icon_y: 861   # Coordenada Y do ícone do Bimmer
   
   # Coordenadas ou identificadores de elementos da tela
-  # (serão configuradas após análise do software)
+  # Coordenadas ABSOLUTAS capturadas (não usar negativas)
   ui_elements:
+    "campo usuario do login bimer": ""
+    "campo tipo de conta no login": "866,579"  # Dropdown de ambiente
     menu_remessas: ""
     botao_gerar: ""
     campo_valor: ""
     campo_beneficiario: ""
 
-    # Login Bimer (1ª tentativa)
-    password_bimer_x: 905
+    # Login Bimer - COORDENADAS ABSOLUTAS CORRETAS
+    password_bimer_x: 904
     password_bimer_y: 520
-    entrar_bimer_x: 935
-    entrar_bimer_y: 644
+    entrar_bimer_x: 511
+    entrar_bimer_y: 682
+    
+    # Dropdown de ambiente
+    campo_dropdown_ambiente_x: 866
+    campo_dropdown_ambiente_y: 579
+    
+    # Item "TESTE" dentro do dropdown
+    ambiente_teste_dropdown_x: 974
+    ambiente_teste_dropdown_y: 677
 
     # Modal de erro de login (OK)
     erro_login_ok_x: 957
     erro_login_ok_y: 554
 
-    # Login Bimer (2ª tentativa, coordenadas explícitas)
-    retry_password_x: 905
+    # Login Bimer (2ª tentativa - mesmas coordenadas)
+    retry_password_x: 904
     retry_password_y: 520
-    retry_entrar_x: 935
-    retry_entrar_y: 644
+    retry_entrar_x: 511
+    retry_entrar_y: 682
 
-    # Botão 'Fechar' do modal automático do Bimer
-    botao_fechar_modal_automatico: "1393,193"
+    # Botão 'Fechar' do modal automático do Bimmer
+    botao_fechar_modal_automatico: "-527,189"
+
+    "menu lateral financeiro": "-1835,319"
+    "a pagar dentro de financeiro": "-1847,352"
+    "caixa para fechar modal e nao exibir novamente": "-1406,844"
+    "fechar modal": "-527,189"
+    "ferramentas": "-1726,96"
+    "gerar arquivo remessa": "-1527,139"
+    "uma conta": "-1504,197"
+    "campo para digitar a conta 19": "-1264,388"
+    "campo do layout, digitar 16": "-1266,435"
+    "campo no bimer para alterar para ambiente de teste": "-896,584"
+    "ambiente de teste no dropdown": "-1045,673"
 
 remessas:
   # Configurações de remessas bancárias

@@ -77,11 +77,10 @@ class BimmerBot:
             # Por solicitação: não abrir nenhum software manualmente (sem cliques/Win+R).
             logger.info("Não abriremos nenhum software manualmente. Prosseguindo para o login se o Bimer já estiver aberto.")
             
-            # Login no Bimer: inserir senha solicitada
+            # Login no Bimer: usar credenciais do config (username/password/account)
             try:
-                senha_login = "Teste123@"
-                logger.info("Realizando login no Bimer (preenchendo senha)...")
-                self.automation.login_bimer(senha_login, max_wait=15.0)
+                logger.info("Realizando login no Bimer (usando credenciais do config)...")
+                self.automation.login_bimer(max_wait=15.0)
             except Exception as e:
                 logger.warning(f"Falha ao executar login automático no Bimer: {e}")
             
